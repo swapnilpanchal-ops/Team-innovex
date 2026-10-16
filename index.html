@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Institute Operations Copilot</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f5;--panel:#fff;--ink:#14213d;--mute:#5d6b82;--line:#d9dfe8;--accent:#1f4fd8;--warn:#b7791f;--warnbg:#fdf3dc;--bad:#c0322b;--badbg:#fde8e6;--ok:#23795a;--okbg:#e2f3ec}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1524;--panel:#16203a;--ink:#e8edf8;--mute:#9aa8c3;--line:#2a3757;--accent:#6c93ff;--warn:#e3b04b;--warnbg:#3a2f14;--bad:#ff7b72;--badbg:#3d1c1f;--ok:#5fcf9f;--okbg:#14352a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Bricolage Grotesque",system-ui,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:18px;margin:0;font-weight:700}
+header span{color:var(--mute);font-size:13px}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;padding:20px 24px;max-width:1400px;margin:auto}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}}
+nav{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap}
+nav button{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 14px;border-radius:6px;font:inherit;cursor:pointer}
+nav button[aria-selected=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+h2{font-size:15px;margin:0 0 10px}
+.sig{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:8px;margin-bottom:8px;border-left:4px solid}
+.sig.bad{background:var(--badbg);border-color:var(--bad)}.sig.warn{background:var(--warnbg);border-color:var(--warn)}
+.sig b{display:block}.sig small{color:var(--mute)}
+.sig button{margin-left:auto;white-space:nowrap}
+.btn{border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:6px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}
+.btn:hover{background:var(--accent);color:#fff}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:500}
+.tbl{overflow-x:auto}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px}
+.tag.bad{background:var(--badbg);color:var(--bad)}.tag.warn{background:var(--warnbg);color:var(--warn)}.tag.ok{background:var(--okbg);color:var(--ok)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.kpi strong{font-size:24px;display:block}.kpi span{color:var(--mute);font-size:13px}
+.dots{display:inline-flex;gap:3px}.dots i{width:10px;height:10px;border-radius:2px;background:var(--line)}
+.dots i.on{background:var(--ok)}.dots i.vr{background:var(--accent)}.dots i.ab{background:var(--bad)}
+aside .panel{position:sticky;top:16px;display:flex;flex-direction:column;height:calc(100vh - 100px);min-height:420px}
+#chat{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px}
+.m{padding:9px 12px;border-radius:10px;max-width:92%;white-space:pre-wrap}
+.m.u{align-self:flex-end;background:var(--accent);color:#fff}.m.a{background:var(--bg)}
+.m ul{margin:4px 0;padding-left:18px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+form{display:flex;gap:6px}
+input{flex:1;padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+form button{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:0 14px;font:inherit;cursor:pointer}
+.draft{border:1px dashed var(--line);padding:8px;border-radius:6px;margin:6px 0;background:var(--panel)}
+</style>
+</head>
+<body>
+<header><h1>Institute Operations Copilot</h1><span id="today"></span></header>
+<div class="wrap">
+<main>
+ <nav role="tablist" id="tabs"></nav>
+ <div id="view"></div>
+</main>
+<aside>
+ <div class="panel">
+  <h2>Ask the copilot</h2>
+  <div id="chat" aria-live="polite"></div>
+  <div class="chips" id="chips"></div>
+  <form id="f"><input id="q" placeholder="e.g. Who is falling behind in DS-Oct?" aria-label="Ask the copilot" autocomplete="off"><button>Ask</button></form>
+ </div>
+</aside>
+</div>
+<script>
+/* ---------- DATA (replace with your database / API) ---------- */
+const TODAY = new Date('2026-10-16');
+const trainers = {T1:'Anita Rao',T2:'Vikram Shah',T3:'Meera Iyer',T4:'Sandeep Pawar'};
+const batches = [
+ {id:'DS-Oct',name:'Data Science (Oct)',trainer:'T1',mode:'Hybrid'},
+ {id:'FS-Sep',name:'Full-Stack Web (Sep)',trainer:'T2',mode:'Hybrid'},
+ {id:'CL-Oct',name:'Cloud & DevOps (Oct)',trainer:'T3',mode:'Online'},
+ {id:'QA-Sep',name:'Software Testing (Sep)',trainer:'T1',mode:'Onsite'}
+];
+// day, start/end in 24h hours
+const sessions = [
+ {id:1,batch:'DS-Oct',trainer:'T1',room:'Lab A',day:'Fri 16 Oct',s:10,e:12,mode:'Hybrid',rec:true},
+ {id:2,batch:'QA-Sep',trainer:'T1',room:'Lab B',day:'Fri 16 Oct',s:11,e:13,mode:'Onsite',rec:false},
+ {id:3,batch:'FS-Sep',trainer:'T2',room:'Lab A',day:'Fri 16 Oct',s:14,e:16,mode:'Hybrid',rec:true},
+ {id:4,batch:'CL-Oct',trainer:'T3',room:'Online',day:'Fri 16 Oct',s:18,e:20,mode:'Online',rec:false},
+ {id:5,batch:'DS-Oct',trainer:'T1',room:'Lab A',day:'Sat 17 Oct',s:10,e:12,mode:'Hybrid',rec:false},
+ {id:6,batch:'FS-Sep',trainer:'T2',room:'Lab A',day:'Sat 17 Oct',s:11,e:13,mode:'Hybrid',rec:false}
+];
+// att: last 8 sessions, 2=present onsite, 1=present online, 0=absent (oldest -> newest)
+const students = [
+ {id:1,name:'Riya Kulkarni',batch:'DS-Oct',phone:'919800000001',att:[2,2,1,2,2,1,2,2],fees:[[ '2026-09-05',8000,1],['2026-10-05',8000,1],['2026-11-05',8000,0]]},
+ {id:2,name:'Aman Verma',batch:'DS-Oct',phone:'919800000002',att:[2,1,0,0,2,0,0,0],fees:[['2026-09-05',8000,1],['2026-10-05',8000,0],['2026-11-05',8000,0]]},
+ {id:3,name:'Sneha Patil',batch:'DS-Oct',phone:'919800000003',att:[1,1,1,0,1,1,0,1],fees:[['2026-09-05',8000,1],['2026-10-05',8000,1],['2026-11-05',8000,0]]},
+ {id:4,name:'Karan Mehta',batch:'FS-Sep',phone:'919800000004',att:[2,2,2,2,1,2,2,2],fees:[['2026-08-10',6500,1],['2026-09-10',6500,1],['2026-10-10',6500,0]]},
+ {id:5,name:'Priya Nair',batch:'FS-Sep',phone:'919800000005',att:[0,1,0,0,1,0,0,1],fees:[['2026-08-10',6500,1],['2026-09-10',6500,0],['2026-10-10',6500,0]]},
+ {id:6,name:'Rohit Jadhav',batch:'FS-Sep',phone:'919800000006',att:[2,2,0,2,2,2,1,2],fees:[['2026-08-10',6500,1],['2026-09-10',6500,1],['2026-10-10',6500,1]]},
+ {id:7,name:'Divya Rane',batch:'CL-Oct',phone:'919800000007',att:[1,1,1,1,0,1,1,1],fees:[['2026-10-01',9000,1],['2026-11-01',9000,0]]},
+ {id:8,name:'Imran Shaikh',batch:'CL-Oct',phone:'919800000008',att:[1,0,0,1,0,0,1,0],fees:[['2026-10-01',9000,0],['2026-11-01',9000,0]]},
+ {id:9,name:'Neha Deshmukh',batch:'QA-Sep',phone:'919800000009',att:[2,2,2,1,2,2,2,2],fees:[['2026-09-12',5000,1],['2026-10-12',5000,1]]},
+ {id:10,name:'Yash Bhosale',batch:'QA-Sep',phone:'919800000010',att:[2,0,2,2,0,2,2,2],fees:[['2026-09-12',5000,1],['2026-10-12',5000,0]]}
+];
+
+/* ---------- ANALYTICS (the signals) ---------- */
+const days = d => Math.floor((TODAY - new Date(d))/864e5);
+const inr = n => '₹'+n.toLocaleString('en-IN');
+const attPct = s => Math.round(100*s.att.filter(Boolean).length/s.att.length);
+const missStreak = s => { let c=0; for(let i=s.att.length-1;i>=0&&!s.att[i];i--)c++; return c; };
+const overdue = s => s.fees.filter(f=>!f[2] && days(f[0])>0).map(f=>({due:f[0],amt:f[1],late:days(f[0])}));
+const find = id => students.find(s=>s.id===id);
+
+function clashes(){
+ const out=[];
+ for(let i=0;i<sessions.length;i++)for(let j=i+1;j<sessions.length;j++){
+  const a=sessions[i],b=sessions[j];
+  if(a.day!==b.day||a.s>=b.e||b.s>=a.e)continue;
+  if(a.trainer===b.trainer)out.push({kind:'Trainer',a,b,who:trainers[a.trainer]});
+  else if(a.room===b.room&&a.room!=='Online')out.push({kind:'Room',a,b,who:a.room});
+ }
+ return out;
+}
+const atRisk = () => students.map(s=>({s,pct:attPct(s),streak:missStreak(s)})).filter(r=>r.pct<70||r.streak>=3);
+const overdueList = () => students.map(s=>({s,o:overdue(s)})).filter(r=>r.o.length);
+const noRec = () => sessions.filter(x=>!x.rec && x.day==='Fri 16 Oct' && x.mode!=='Onsite' && x.e<=19);
+
+function signals(){
+ const L=[];
+ clashes().forEach(c=>L.push({lvl:'bad',t:`${c.kind} double-booked: ${c.who}`,d:`${c.a.batch} and ${c.b.batch} overlap on ${c.a.day}, ${c.a.s}:00–${Math.min(c.a.e,c.b.e)}:00`,q:'Show schedule clashes'}));
+ overdueList().forEach(r=>{const w=r.o.reduce((m,x)=>Math.max(m,x.late),0);const tot=r.o.reduce((a,x)=>a+x.amt,0);
+  L.push({lvl:w>14?'bad':'warn',t:`EMI overdue: ${r.s.name}`,d:`${inr(tot)} across ${r.o.length} instalment(s), ${w} days late · ${r.s.batch}`,q:'Draft reminder for '+r.s.name})});
+ atRisk().forEach(r=>L.push({lvl:r.streak>=3?'bad':'warn',t:`Falling behind: ${r.s.name}`,d:`${r.pct}% attendance, ${r.streak} missed in a row · ${r.s.batch}`,q:'Why is '+r.s.name+' at risk?'}));
+ noRec().forEach(x=>L.push({lvl:'warn',t:`Recording missing: ${x.batch}`,d:`${x.day} ${x.s}:00 session has no recording uploaded`,q:'Which recordings are missing?'}));
+ return L.sort((a,b)=>(a.lvl==='bad'?0:1)-(b.lvl==='bad'?0:1));
+}
+
+/* ---------- VIEWS ---------- */
+const dots = a => '<span class="dots" title="oldest → newest">'+a.map(v=>`<i class="${v===2?'on':v===1?'vr':'ab'}"></i>`).join('')+'</span>';
+const views = {
+ Overview(){
+  const sg=signals(), od=overdueList().reduce((a,r)=>a+r.o.reduce((x,y)=>x+y.amt,0),0);
+  return `<div class="kpis">
+   <div class="kpi"><strong>${students.length}</strong><span>Active students</span></div>
+   <div class="kpi"><strong>${atRisk().length}</strong><span>Falling behind</span></div>
+   <div class="kpi"><strong>${inr(od)}</strong><span>Overdue fees</span></div>
+   <div class="kpi"><strong>${clashes().length}</strong><span>Schedule clashes</span></div></div>
+   <div class="panel"><h2>Needs attention today (${sg.length})</h2>${sg.map(x=>`<div class="sig ${x.lvl}"><div><b>${x.t}</b><small>${x.d}</small></div><button class="btn" data-ask="${x.q}">Ask copilot</button></div>`).join('')}</div>`;
+ },
+ Batches(){
+  return `<div class="panel tbl"><h2>Batches</h2><table><tr><th>Batch</th><th>Trainer</th><th>Mode</th><th>Students</th><th>Avg attendance</th><th>Overdue</th></tr>`+
+  batches.map(b=>{const st=students.filter(s=>s.batch===b.id);const avg=Math.round(st.reduce((a,s)=>a+attPct(s),0)/st.length);const od=st.filter(s=>overdue(s).length).length;
+   return `<tr><td><b>${b.name}</b></td><td>${trainers[b.trainer]}</td><td>${b.mode}</td><td>${st.length}</td><td><span class="tag ${avg<75?'warn':'ok'}">${avg}%</span></td><td>${od?`<span class="tag bad">${od} student(s)</span>`:'<span class="tag ok">none</span>'}</td></tr>`}).join('')+`</table></div>`;
+ },
+ Schedule(){
+  const cl=clashes(), bad=new Set(cl.flatMap(c=>[c.a.id,c.b.id]));
+  return `<div class="panel tbl"><h2>Trainer & room schedule</h2><table><tr><th>Day</th><th>Time</th><th>Batch</th><th>Trainer</th><th>Room</th><th>Mode</th><th>Recording</th><th></th></tr>`+
+  sessions.map(x=>`<tr><td>${x.day}</td><td>${x.s}:00–${x.e}:00</td><td>${x.batch}</td><td>${trainers[x.trainer]}</td><td>${x.room}</td><td>${x.mode}</td><td>${x.rec?'<span class="tag ok">uploaded</span>':'<span class="tag warn">pending</span>'}</td><td>${bad.has(x.id)?'<span class="tag bad">clash</span>':''}</td></tr>`).join('')+`</table></div>`;
+ },
+ Attendance(){
+  return `<div class="panel tbl"><h2>Attendance (last 8 sessions)</h2><p style="color:var(--mute);margin:0 0 8px;font-size:13px">Green = in class, blue = online, red = absent</p><table><tr><th>Student</th><th>Batch</th><th>Pattern</th><th>Rate</th></tr>`+
+  students.map(s=>{const p=attPct(s),k=missStreak(s);return `<tr><td>${s.name}</td><td>${s.batch}</td><td>${dots(s.att)}</td><td><span class="tag ${p<70||k>=3?'bad':p<85?'warn':'ok'}">${p}%</span></td></tr>`}).join('')+`</table></div>`;
+ },
+ Fees(){
+  return `<div class="panel tbl"><h2>Fee instalments</h2><table><tr><th>Student</th><th>Batch</th><th>Instalments</th><th>Status</th></tr>`+
+  students.map(s=>{const o=overdue(s);return `<tr><td>${s.name}</td><td>${s.batch}</td><td>${s.fees.map(f=>`<div style="font-size:13px">${f[0].slice(5)} · ${inr(f[1])} ${f[2]?'✓':''}</div>`).join('')}</td><td>${o.length?`<span class="tag bad">${inr(o.reduce((a,x)=>a+x.amt,0))} overdue</span>`:'<span class="tag ok">on track</span>'}</td></tr>`}).join('')+`</table></div>`;
+ }
+};
+const tabs=document.getElementById('tabs'),view=document.getElementById('view');
+let cur='Overview';
+function show(t){cur=t;tabs.innerHTML=Object.keys(views).map(k=>`<button role="tab" aria-selected="${k===t}" data-tab="${k}">${k}</button>`).join('');view.innerHTML=views[t]();}
+tabs.onclick=e=>{const t=e.target.dataset.tab;if(t)show(t)};
+view.onclick=e=>{const q=e.target.dataset.ask;if(q)ask(q)};
+
+/* ---------- COPILOT ---------- */
+/* Rule-based intent router so the demo works offline.
+   To use a real LLM: send {question, context: summarize()} to your backend and render the reply (see README). */
+const chat=document.getElementById('chat');
+function say(html,who='a'){const d=document.createElement('div');d.className='m '+who;d.innerHTML=html;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;return d}
+const li = a => '<ul>'+a.map(x=>`<li>${x}</li>`).join('')+'</ul>';
+const byName = q => students.find(s=>q.toLowerCase().includes(s.name.toLowerCase())||q.toLowerCase().includes(s.name.split(' ')[0].toLowerCase()));
+const byBatch = q => batches.find(b=>q.toLowerCase().includes(b.id.toLowerCase()));
+
+function draft(s){
+ const o=overdue(s);const tot=o.reduce((a,x)=>a+x.amt,0);
+ const msg=`Hi ${s.name.split(' ')[0]}, this is a gentle reminder from the institute: your instalment of ${inr(tot)} for ${s.batch} was due on ${o[0].due.split('-').reverse().join('/')}. Please pay at your earliest or reply if you need a short extension. Thank you!`;
+ return `Here is a draft reminder for <b>${s.name}</b>:<div class="draft">${msg}</div><a class="btn" target="_blank" rel="noopener" href="https://wa.me/${s.phone}?text=${encodeURIComponent(msg)}">Open in WhatsApp</a>`;
+}
+function reply(q){
+ const l=q.toLowerCase(), s=byName(q), b=byBatch(q);
+ if(/remind|draft|message|whatsapp/.test(l)){
+  if(s&&overdue(s).length)return draft(s);
+  if(s)return `${s.name} has no overdue instalments.`;
+  const od=overdueList();return od.length?`Overdue students — say "Draft reminder for <name>":`+li(od.map(r=>`${r.s.name} (${inr(r.o.reduce((a,x)=>a+x.amt,0))})`)):'No overdue instalments right now.';
+ }
+ if(/clash|conflict|double|overlap|schedule/.test(l)){
+  const c=clashes();return c.length?`Found ${c.length} clash(es):`+li(c.map(x=>`${x.kind} <b>${x.who}</b>: ${x.a.batch} (${x.a.s}:00–${x.a.e}:00) vs ${x.b.batch} (${x.b.s}:00–${x.b.e}:00), ${x.a.day}`))+'Suggestion: move the later session to the next free slot for that trainer or room.':'No clashes in the current schedule.';
+ }
+ if(/recording|recorded/.test(l)){
+  const r=sessions.filter(x=>!x.rec&&x.mode!=='Onsite');return r.length?'Sessions awaiting recordings:'+li(r.map(x=>`${x.batch}, ${x.day} ${x.s}:00 with ${trainers[x.trainer]}`)):'All hybrid/online sessions have recordings.';
+ }
+ if(s&&/risk|behind|why|attend|how is|status/.test(l)||(s&&!/fee|emi/.test(l))){
+  const p=attPct(s),k=missStreak(s),o=overdue(s);
+  return `<b>${s.name}</b> (${s.batch}): ${p}% attendance over the last 8 sessions, ${k} missed in a row.`+(o.length?` Also ${inr(o.reduce((a,x)=>a+x.amt,0))} overdue.`:'')+((p<70||k>=3)?`<br>Suggested next step: a call from the trainer, share the missed recordings, and ${o.length?'combine it with a fee conversation.':'check for a schedule or travel issue.'}`:'<br>No action needed.');
+ }
+ if(/fee|emi|overdue|payment|pending/.test(l)){
+  const od=overdueList();if(b){const x=od.filter(r=>r.s.batch===b.id);return x.length?`Overdue in ${b.id}:`+li(x.map(r=>`${r.s.name}: ${inr(r.o.reduce((a,y)=>a+y.amt,0))}, ${Math.max(...r.o.map(y=>y.late))} days late`)):`No overdue fees in ${b.id}.`}
+  const tot=od.reduce((a,r)=>a+r.o.reduce((x,y)=>x+y.amt,0),0);
+  return `${inr(tot)} overdue across ${od.length} students:`+li(od.map(r=>`${r.s.name} (${r.s.batch}) — ${inr(r.o.reduce((a,y)=>a+y.amt,0))}`));
+ }
+ if(/behind|risk|drop|attendance|struggl/.test(l)){
+  let r=atRisk();if(b)r=r.filter(x=>x.s.batch===b.id);
+  return r.length?`Students needing attention${b?' in '+b.id:''}:`+li(r.map(x=>`${x.s.name} (${x.s.batch}): ${x.pct}%, ${x.streak} missed in a row`)):'Nobody is below the attendance threshold.';
+ }
+ if(b){const st=students.filter(x=>x.batch===b.id);return `<b>${b.name}</b> — trainer ${trainers[b.trainer]}, ${b.mode}. ${st.length} students, average attendance ${Math.round(st.reduce((a,x)=>a+attPct(x),0)/st.length)}%, ${st.filter(x=>overdue(x).length).length} with overdue fees.`}
+ if(/summary|today|brief|attention|overview|what/.test(l)){
+  const sg=signals();return `${sg.length} things need attention today:`+li(sg.slice(0,6).map(x=>`<b>${x.t}</b> — ${x.d}`));
+ }
+ return 'I can help with: students falling behind, overdue EMIs, schedule clashes, missing recordings, batch summaries, and drafting fee reminders. Try one of the suggestions below.';
+}
+function ask(q){say(q.replace(/</g,'&lt;'),'u');setTimeout(()=>say(reply(q)),250)}
+document.getElementById('f').onsubmit=e=>{e.preventDefault();const i=document.getElementById('q');if(i.value.trim())ask(i.value.trim());i.value=''};
+const sugg=['What needs attention today?','Who is falling behind?','Show schedule clashes','Overdue fees in FS-Sep','Draft reminder for Aman'];
+document.getElementById('chips').innerHTML=sugg.map(s=>`<button class="btn" data-s="${s}">${s}</button>`).join('');
+document.getElementById('chips').onclick=e=>{if(e.target.dataset.s)ask(e.target.dataset.s)};
+document.getElementById('today').textContent='Friday, 16 October 2026 · sample data';
+show('Overview');
+say('Hi, I watch attendance, fees and schedules so you don\'t have to. Ask me what needs attention.');
+</script>
+</body>
+</html>
