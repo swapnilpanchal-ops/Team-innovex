@@ -8,8 +8,8 @@ const B=[{id:'JFS-A',name:'Java Full Stack',key:'java',mode:'Classroom',trainer:
 {id:'WD-C',name:'Web Dev Bootcamp',key:'web',mode:'Online',trainer:'Sanket Patil',cap:40,fee:45000}];
 // name,batch,counselor,last 8 sessions (P present,L late,A absent,S online join <45 of 60 min = not counted),total,paid,emi,due offset
 const seed=[['Aarav Deshmukh','JFS-A','Anita Rao','PAPAAPPA',80000,30000,10000,2],['Isha Kulkarni','JFS-A','Anita Rao','PPPPPLPP',80000,50000,10000,5],
-['Rahul More','JFS-A','Anita Rao','APAAPPPA',80000,20000,10000,4],['Sneha Pawar','JFS-A','Anita Rao','PPPAPPAP',80000,40000,10000,3],
-['Omkar Jadhav','JFS-A','Anita Rao','PAAPPPAP',80000,60000,10000,-9],['Priya Shinde','PY-B','Anita Rao','PPPPPPAP',60000,60000,0,null],
+['ovee kawre','JFS-A','Anita Rao','APAAPPPA',80000,20000,10000,4],['Sneha Pawar','JFS-A','Anita Rao','PPPAPPAP',80000,40000,10000,3],
+['vedant dangi','JFS-A','Anita Rao','PAAPPPAP',80000,60000,10000,-9],['Priya Shinde','PY-B','Anita Rao','PPPPPPAP',60000,60000,0,null],
 ['Karan Bhosale','PY-B','Vikram Shah','PAPPAPAL',60000,30000,7500,1],['Neha Gaikwad','PY-B','Vikram Shah','PPAPPPPP',60000,45000,7500,6],
 ['Vivek Salunkhe','PY-B','Vikram Shah','AAPAPAPP',60000,15000,7500,-9],['Tanvi Chavan','WD-C','Vikram Shah','PPSPPPSP',45000,30000,5000,3],
 ['Aditya Kale','WD-C','Vikram Shah','PSSPAPSP',45000,15000,5000,0],['Riya Mane','WD-C','Vikram Shah','PPPPLPPP',45000,45000,0,null]];
